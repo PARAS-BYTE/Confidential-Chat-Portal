@@ -19,11 +19,12 @@ Set these environment variables in your hosting dashboard (e.g. Vercel Project S
 
 | Variable Name | Purpose | Example / Format | Required |
 |---|---|---|---|
-| `DATABASE_URL` | PostgreSQL pooled connection string | `postgresql://user:pass@host/db?sslmode=require` | Yes |
+| `DATABASE_URL` | PostgreSQL pooled connection string (e.g. Supabase port 6543) | `postgresql://user:pass@host:6543/db?pgbouncer=true` | Yes |
+| `DIRECT_URL` | Direct PostgreSQL connection string for migrations (port 5432) | `postgresql://user:pass@host:5432/db` | Yes (for poolers) |
 | `SESSION_SECRET` | 32+ byte cryptographic key for sessions | `openssl rand -base64 32` | Yes |
 | `APP_URL` | Fully qualified canonical public HTTPS domain | `https://ccp-portal.vercel.app` | Yes |
 | `NODE_ENV` | Environment identifier | `production` | Yes |
-| `DEMO_PASSWORD` | Shared password for seeded demo accounts | Strong alphanumeric password | Recommended |
+| `DEMO_PASSWORD` | Shared password for seeded demo accounts | Strong alphanumeric password (e.g. `DemoPassword123!`) | Recommended |
 
 > **Security Rule**: Never commit secrets or connection strings to git. Use `.env.example` as a template for local development.
 
