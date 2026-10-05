@@ -26,6 +26,7 @@ import { Chip } from "@/components/ui/Chip";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Modal } from "@/components/ui/Modal";
 import { useToast } from "@/components/ui/Toast";
+import { AdminNavRail } from "@/components/layout/AdminNavRail";
 
 interface FlagItem {
   id: string;
@@ -186,54 +187,7 @@ export default function FlagsReviewPage() {
   return (
     <div className="flex h-screen w-full bg-bg-app text-text-primary overflow-hidden select-none">
       {/* Zone 1: Icon Rail */}
-      <div className="w-16 flex flex-col items-center py-4 bg-bg-app border-r border-border shrink-0 justify-between">
-        <div className="flex flex-col items-center gap-6">
-          <div className="w-10 h-10 rounded-full bg-accent-soft text-accent flex items-center justify-center font-bold text-sm">
-            <Shield className="w-5 h-5" />
-          </div>
-
-          <nav className="flex flex-col gap-2">
-            <a
-              href="/admin"
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
-              title="Projects & Users"
-            >
-              <FolderKanban className="w-5 h-5" />
-            </a>
-
-            <button
-              className="w-10 h-10 rounded-lg flex items-center justify-center bg-accent-soft text-accent transition-colors"
-              title="Flag Review Queue"
-            >
-              <Flag className="w-5 h-5" />
-            </button>
-
-            <a
-              href="/admin/rules"
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
-              title="Content Rules"
-            >
-              <Sliders className="w-5 h-5" />
-            </a>
-
-            <a
-              href="/admin/audit"
-              className="w-10 h-10 rounded-lg flex items-center justify-center text-text-secondary hover:text-text-primary hover:bg-bg-hover transition-colors"
-              title="Audit Log"
-            >
-              <FileText className="w-5 h-5" />
-            </a>
-          </nav>
-        </div>
-
-        <button
-          onClick={handleLogout}
-          className="w-10 h-10 rounded-lg flex items-center justify-center text-text-secondary hover:text-danger hover:bg-danger/10 transition-colors"
-          title="Sign out"
-        >
-          <LogOut className="w-5 h-5" />
-        </button>
-      </div>
+      <AdminNavRail activeNav="flags" />
 
       {/* Main Container */}
       <div className="flex-1 flex overflow-hidden">

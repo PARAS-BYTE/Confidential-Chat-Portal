@@ -26,6 +26,14 @@ export interface ParticipantProjectDTO {
   unreadCount?: number;
 }
 
+export interface ParticipantNotificationDTO {
+  id: string;
+  type: string;
+  text: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
 export interface AdminMessageDTO {
   id: string;
   conversationId: string;
@@ -133,3 +141,24 @@ export function serializeAdminUser(user: User): AdminUserDTO {
     createdAt: user.createdAt.toISOString(),
   };
 }
+
+/**
+ * Participant notification serializer.
+ * INVARIANT: Zero exposure of user IDs, membership IDs, or internal relationships.
+ */
+export function serializeNotification(notification: {
+  id: string;
+  type: string;
+  text: string;
+  readAt: Date | null;
+  createdAt: Date;
+}): ParticipantNotificationDTO {
+  return {
+    id: notification.id,
+    type: notification.type,
+    text: notification.text,
+    readAt: notification.readAt ? notification.readAt.toISOString() : null,
+    createdAt: notification.createdAt.toISOString(),
+  };
+}
+
