@@ -79,8 +79,56 @@
 - **`.github/workflows/ci.yml`**: Triggers on pull requests and pushes to validate install, lint, typecheck, test, and build.
 - **`docs/ARCHITECTURE.md`**: Outlines system layers, security invariants, directory structure, and allow-list serialization.
 
+---
+
+## Part 2: Database Schema, Migrations, and Demo Seed
+
+### 1. Data Model & Architecture
+- Designed and synchronized complete Prisma schema in `prisma/schema.prisma`:
+  - **Enums**: `UserRole` (ADMIN, CLIENT, EMPLOYEE), `MembershipStatus` (ACTIVE, REMOVED), `MessageStatus` (SENDING, DELIVERED, HELD, REJECTED, FAILED), `RuleCategory` (CONTACT, OFF_PLATFORM, COMMERCIAL, ABUSE), `PatternType` (REGEX, KEYWORD), `RuleSeverity` (LOW, MEDIUM, HIGH), `RuleAction` (ALLOW_FLAG, HOLD), `FlagStatus` (OPEN, APPROVED, REJECTED, DISMISSED).
+  - **Models**:
+    - `User`: realName, email (unique), phone, passwordHash, isActive, createdAt.
+    - `Project`: title, description, status, createdAt.
+    - `Membership`: userId, projectId, alias, role, status, removedAt with constraints `@@unique([userId, projectId])` and `@@unique([projectId, alias])`.
+    - `Conversation`: projectId (unique), messages relation, readStates relation.
+    - `Message`: conversationId, senderMembershipId, body, status, clientMessageId, deliveredAt, createdAt with constraint `@@unique([senderMembershipId, clientMessageId])`.
+    - `Rule`: name, category, pattern, patternType, severity, action, isActive, isLocked.
+    - `Flag`: messageId, ruleId, category, severity, reason, matchedText, status, reviewNote, reviewedById, reviewedAt, createdAt.
+    - `Notification`: recipientUserId, recipientMembershipId, type, text, readAt, createdAt.
+    - `AuditEvent`: actorId, action, targetType, targetId, metadata (Json), createdAt.
+    - `ReadState`: membershipId, conversationId, lastReadAt with `@@unique([membershipId, conversationId])`.
+    - `Session`: userId, tokenHash (unique), expiresAt, createdAt.
+- Installed `argon2` for password hashing.
+- Added `directUrl` in datasource configuration for direct migration and pooling support.
+- Generated migration SQL in `prisma/migrations/20261005121900_init_schema/migration.sql`.
+
+### 2. Idempotent Demo Seed (`scripts/seed.ts`)
+- Implemented `npm run db:seed`:
+  - Uses `argon2.hash` for password security. Reads `DEMO_PASSWORD` from environment or generates one and logs once.
+  - Fictional users: 1 Admin (`admin@demo.ccp.test`), 2 Clients (`client1@demo.ccp.test`, `client2@demo.ccp.test`), 2 Employees (`employee1@demo.ccp.test`, `employee2@demo.ccp.test`).
+  - Isolated projects:
+    - **Project Alpha**: Client 1 ("Client A") + Employee 1 ("Project Specialist B").
+    - **Project Beta**: Client 2 ("Client C") + Employee 2 ("Project Specialist D").
+  - Seeded conversations, read states, and ordinary demo messages with unique clientMessageIds.
+  - Seeded baseline moderation rules (Phone Number, Email Address, Off-Platform Solicitation, Commercial Negotiation, Abusive Language).
+  - Verified 100% idempotent: running repeatedly creates no duplicates or errors.
+
+### 3. Demo Reset Script (`scripts/reset-demo.ts`)
+- Implemented `npm run db:reset-demo`:
+  - Safely filters strictly by `@demo.ccp.test` domain and demo projects ("Project Alpha", "Project Beta").
+  - Deletes in transactional order: demo notifications, audit events, flags, messages, read states, conversations, memberships, projects, sessions, and users.
+  - Never touches non-demo user data or projects.
+
+### 4. Schema Constraint Tests (`tests/schema.test.ts`)
+- Added Vitest tests verifying:
+  - Unique alias per project (`@@unique([projectId, alias])`).
+  - Unique clientMessageId per sender (`@@unique([senderMembershipId, clientMessageId])`).
+  - Unique email per user.
+  - Unique conversation per project.
+
 ### Verification Results
 - Lint: `npm run lint` PASSED (0 warnings, 0 errors).
 - Typecheck: `npm run typecheck` PASSED (0 errors).
-- Tests: `npm run test` PASSED (2/2 tests passed).
-- Build: `npm run build` PASSED (optimized production build generated).
+- Tests: `npm run test` PASSED (6/6 tests passing across health and schema suites).
+- Build: `npm run build` PASSED.
+- Seed: `npm run db:seed` twice succeeded without duplicates; `npm run db:reset-demo` safely removed demo data and re-seeding cleanly restored it.
