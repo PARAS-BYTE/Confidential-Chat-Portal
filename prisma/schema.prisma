@@ -1,19 +1,249 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// CCP Confidential Communication Portal — Database Schema
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-// Baseline placeholder model to validate Prisma client generation and migrations
-model SystemHealth {
+enum UserRole {
+  ADMIN
+  CLIENT
+  EMPLOYEE
+}
+
+enum MembershipStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum MessageStatus {
+  SENDING
+  DELIVERED
+  HELD
+  REJECTED
+  FAILED
+}
+
+enum RuleCategory {
+  CONTACT
+  OFF_PLATFORM
+  COMMERCIAL
+  ABUSE
+}
+
+enum PatternType {
+  REGEX
+  KEYWORD
+}
+
+enum RuleSeverity {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum RuleAction {
+  ALLOW_FLAG
+  HOLD
+}
+
+enum FlagStatus {
+  OPEN
+  APPROVED
+  REJECTED
+  DISMISSED
+}
+
+model User {
+  id           String        @id @default(uuid())
+  role         UserRole
+  realName     String
+  email        String        @unique
+  phone        String?
+  passwordHash String
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+
+  memberships   Membership[]
+  sessions      Session[]
+  reviewedFlags Flag[]        @relation("FlagReviewer")
+  auditEvents   AuditEvent[]  @relation("AuditActor")
+  notifications Notification[] @relation("UserNotifications")
+
+  @@index([role])
+  @@index([isActive])
+}
+
+model Project {
+  id          String        @id @default(uuid())
+  title       String
+  description String?
+  status      String        @default("ACTIVE") // ACTIVE, ARCHIVED, CLOSED
+  createdAt   DateTime      @default(now())
+
+  memberships  Membership[]
+  conversation Conversation?
+
+  @@index([status])
+}
+
+model Membership {
+  id         String           @id @default(uuid())
+  userId     String
+  projectId  String
+  alias      String
+  role       String           // "CLIENT", "EMPLOYEE", "SPECIALIST", etc.
+  status     MembershipStatus @default(ACTIVE)
+  removedAt  DateTime?
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project      Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messagesSent Message[]      @relation("SentMessages")
+  readStates   ReadState[]
+  notifications Notification[] @relation("MembershipNotifications")
+
+  @@unique([userId, projectId])
+  @@unique([projectId, alias])
+  @@index([userId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model Conversation {
+  id        String       @id @default(uuid())
+  projectId String       @unique
+  createdAt DateTime     @default(now())
+
+  project    Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  messages   Message[]
+  readStates ReadState[]
+
+  @@index([projectId])
+}
+
+model Message {
+  id                 String        @id @default(uuid())
+  conversationId     String
+  senderMembershipId String
+  body               String
+  status             MessageStatus @default(DELIVERED)
+  clientMessageId    String
+  deliveredAt        DateTime?
+  createdAt          DateTime      @default(now())
+
+  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderMembership Membership   @relation("SentMessages", fields: [senderMembershipId], references: [id], onDelete: Cascade)
+  flags            Flag[]
+
+  @@unique([senderMembershipId, clientMessageId])
+  @@index([conversationId, createdAt])
+  @@index([senderMembershipId])
+  @@index([status])
+}
+
+model Rule {
+  id          String       @id @default(uuid())
+  name        String
+  category    RuleCategory
+  pattern     String
+  patternType PatternType  @default(REGEX)
+  severity    RuleSeverity @default(MEDIUM)
+  action      RuleAction   @default(ALLOW_FLAG)
+  isActive    Boolean      @default(true)
+  isLocked    Boolean      @default(false)
+
+  flags Flag[]
+
+  @@index([category])
+  @@index([isActive])
+}
+
+model Flag {
+  id           String       @id @default(uuid())
+  messageId    String
+  ruleId       String?
+  category     RuleCategory
+  severity     RuleSeverity
+  reason       String
+  matchedText  String
+  status       FlagStatus   @default(OPEN)
+  reviewNote   String?
+  reviewedById String?
+  reviewedAt   DateTime?
+  createdAt    DateTime     @default(now())
+
+  message    Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  rule       Rule?   @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  reviewedBy User?   @relation("FlagReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([messageId])
+  @@index([ruleId])
+  @@index([status])
+  @@index([category])
+}
+
+model Notification {
+  id                    String      @id @default(uuid())
+  recipientUserId       String?
+  recipientMembershipId String?
+  type                  String
+  text                  String
+  readAt                DateTime?
+  createdAt             DateTime    @default(now())
+
+  recipientUser       User?       @relation("UserNotifications", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  recipientMembership Membership? @relation("MembershipNotifications", fields: [recipientMembershipId], references: [id], onDelete: Cascade)
+
+  @@index([recipientUserId])
+  @@index([recipientMembershipId])
+  @@index([readAt])
+}
+
+model AuditEvent {
+  id         String   @id @default(uuid())
+  actorId    String?
+  action     String
+  targetType String
+  targetId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([action])
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+model ReadState {
+  id             String   @id @default(uuid())
+  membershipId   String
+  conversationId String
+  lastReadAt     DateTime @default(now())
+
+  membership   Membership   @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([membershipId, conversationId])
+  @@index([membershipId])
+  @@index([conversationId])
+}
+
+model Session {
   id        String   @id @default(uuid())
-  key       String   @unique
-  value     String
-  updatedAt DateTime @updatedAt
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
