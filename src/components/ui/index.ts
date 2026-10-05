@@ -8,3 +8,6 @@ export * from "./EmptyState";
 export * from "./ErrorState";
 export * from "./Modal";
 export * from "./Toast";
+export * from "./AccessDenied";
+export * from "./StatusPill";
+

@@ -192,7 +192,11 @@ export default function FlagsReviewPage() {
       {/* Main Container */}
       <div className="flex-1 flex overflow-hidden">
         {/* Zone 2: Flags List Queue */}
-        <div className="w-80 md:w-96 bg-bg-panel border-r border-border flex flex-col shrink-0">
+        <div
+          className={`w-full sm:w-80 md:w-96 bg-bg-panel border-r border-border flex flex-col shrink-0 ${
+            selectedFlagId ? "hidden sm:flex" : "flex"
+          }`}
+        >
           <div className="p-4 border-b border-border">
             <h1 className="text-sm font-semibold text-text-primary">Review Queue</h1>
             <p className="text-[11px] text-text-secondary">Messages intercepted for moderation</p>
@@ -288,7 +292,11 @@ export default function FlagsReviewPage() {
         </div>
 
         {/* Zone 3: Flag Detail & Decision Pane */}
-        <div className="flex-1 bg-bg-app flex flex-col overflow-y-auto">
+        <div
+          className={`flex-1 bg-bg-app flex flex-col overflow-y-auto ${
+            !selectedFlagId ? "hidden sm:flex" : "flex"
+          }`}
+        >
           {loadingDetail ? (
             <div className="p-8 max-w-4xl mx-auto space-y-4 w-full">
               <Skeleton className="h-28 w-full rounded-xl" />
@@ -297,6 +305,16 @@ export default function FlagsReviewPage() {
             </div>
           ) : detailData ? (
             <div className="p-6 max-w-4xl w-full mx-auto space-y-6">
+              {/* Mobile Back Button */}
+              <button
+                onClick={() => setSelectedFlagId(null)}
+                className="sm:hidden text-text-secondary hover:text-text-primary p-1 -ml-1 rounded mb-2 flex items-center gap-1.5 text-xs font-medium"
+                aria-label="Back to review queue"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Back to review queue</span>
+              </button>
+
               {/* Summary Banner */}
               <Card className="bg-bg-surface border-border p-5 space-y-3">
                 <div className="flex items-start justify-between">
