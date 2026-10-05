@@ -14,6 +14,8 @@ import {
   CheckCheck,
   AlertCircle,
   RefreshCw,
+  Bell,
+  Info,
 } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -21,7 +23,11 @@ import { Chip } from "@/components/ui/Chip";
 import { Badge } from "@/components/ui/Badge";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { ParticipantProjectDTO, ParticipantMessageDTO } from "@/lib/serializers";
+import {
+  ParticipantProjectDTO,
+  ParticipantMessageDTO,
+  ParticipantNotificationDTO,
+} from "@/lib/serializers";
 
 function getInitials(name: string): string {
   if (!name) return "?";
@@ -61,6 +67,9 @@ export default function ProjectsPage() {
   const [inputText, setInputText] = React.useState("");
   const [pendingMessages, setPendingMessages] = React.useState<PendingMessage[]>([]);
 
+  // Notifications state
+  const [notifications, setNotifications] = React.useState<ParticipantNotificationDTO[]>([]);
+
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const isNearBottomRef = React.useRef(true);
   const chatScrollContainerRef = React.useRef<HTMLDivElement>(null);
@@ -99,10 +108,37 @@ export default function ProjectsPage() {
     }
   }, []);
 
+  // 3. Fetch notifications for current user
+  const fetchNotifications = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/notifications");
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications || []);
+      }
+    } catch {
+      // Ignore background poll errors
+    }
+  }, []);
+
+  const handleMarkNotificationsRead = async (notificationIds?: string[]) => {
+    try {
+      await fetch("/api/notifications/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationIds }),
+      });
+      fetchNotifications();
+    } catch {
+      // Ignore background errors
+    }
+  };
+
   // Initial load
   React.useEffect(() => {
     fetchProjects();
-  }, [fetchProjects]);
+    fetchNotifications();
+  }, [fetchProjects, fetchNotifications]);
 
   // Load messages when selected project changes
   React.useEffect(() => {
@@ -122,6 +158,7 @@ export default function ProjectsPage() {
     const interval = setInterval(() => {
       if (document.visibilityState === "visible") {
         fetchProjects();
+        fetchNotifications();
         if (selectedProjectId) {
           fetchMessages(selectedProjectId);
         }
@@ -129,7 +166,7 @@ export default function ProjectsPage() {
     }, 3500);
 
     return () => clearInterval(interval);
-  }, [selectedProjectId, fetchProjects, fetchMessages]);
+  }, [selectedProjectId, fetchProjects, fetchMessages, fetchNotifications]);
 
   // Handle scroll to track if user scrolled up
   const handleScroll = () => {
@@ -222,6 +259,7 @@ export default function ProjectsPage() {
   };
 
   const selectedProject = projects.find((p) => p.id === selectedProjectId);
+  const unreadNotifications = notifications.filter((n) => !n.readAt);
 
   const filteredProjects = projects.filter((p) => {
     const matchesSearch =
@@ -244,12 +282,27 @@ export default function ProjectsPage() {
             <Shield className="w-5 h-5" />
           </div>
 
-          <button
-            className="w-10 h-10 rounded-lg flex items-center justify-center bg-accent-soft text-accent transition-colors"
-            title="Projects & Chats"
-          >
-            <MessageSquare className="w-5 h-5" />
-          </button>
+          <div className="flex flex-col items-center gap-2">
+            <button
+              className="w-10 h-10 rounded-lg flex items-center justify-center bg-accent-soft text-accent transition-colors"
+              title="Projects & Chats"
+            >
+              <MessageSquare className="w-5 h-5" />
+            </button>
+
+            {unreadNotifications.length > 0 && (
+              <button
+                onClick={() => handleMarkNotificationsRead()}
+                className="relative w-10 h-10 rounded-lg flex items-center justify-center text-accent hover:bg-bg-hover transition-colors"
+                title={`${unreadNotifications.length} unread notification(s) - click to mark all read`}
+              >
+                <Bell className="w-5 h-5" />
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-accent text-bg-app text-[11px] font-bold rounded-full flex items-center justify-center ring-2 ring-bg-app">
+                  {unreadNotifications.length}
+                </span>
+              </button>
+            )}
+          </div>
         </div>
 
         <button
@@ -298,6 +351,22 @@ export default function ProjectsPage() {
             </Chip>
           </div>
         </div>
+
+        {/* Unread Decision Notice in Inbox */}
+        {unreadNotifications.length > 0 && (
+          <div className="mx-2.5 my-2 p-2 rounded-lg bg-bg-surface border border-accent/40 flex items-center justify-between text-xs shrink-0">
+            <div className="flex items-center gap-2 text-text-primary min-w-0 pr-2">
+              <Bell className="w-3.5 h-3.5 text-accent shrink-0" />
+              <span className="truncate text-[11px]">{unreadNotifications[0].text}</span>
+            </div>
+            <button
+              onClick={() => handleMarkNotificationsRead([unreadNotifications[0].id])}
+              className="text-[10px] text-accent font-medium hover:underline shrink-0"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* Project Items List */}
         <div className="flex-1 overflow-y-auto divide-y divide-border/30">
@@ -426,6 +495,22 @@ export default function ProjectsPage() {
               </p>
             </div>
 
+            {/* Quiet System Decision Notice Banner */}
+            {unreadNotifications.length > 0 && (
+              <div className="mx-4 mb-2 p-2.5 rounded-lg bg-bg-surface border border-accent/40 flex items-center justify-between text-xs text-text-secondary shrink-0">
+                <div className="flex items-center gap-2">
+                  <Info className="w-4 h-4 text-accent shrink-0" />
+                  <span className="text-[11px] text-text-primary">{unreadNotifications[0].text}</span>
+                </div>
+                <button
+                  onClick={() => handleMarkNotificationsRead([unreadNotifications[0].id])}
+                  className="text-[10px] bg-bg-field hover:bg-bg-hover text-text-primary px-2 py-1 rounded transition-colors font-medium shrink-0"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
             {/* Messages Container */}
             <div
               ref={chatScrollContainerRef}
@@ -447,6 +532,15 @@ export default function ProjectsPage() {
                 </div>
               ) : (
                 <>
+                  {/* Quiet System Notices in Chat */}
+                  {notifications.slice(0, 3).map((n) => (
+                    <div key={`system-notice-${n.id}`} className="flex justify-center my-2 select-none">
+                      <span className="text-[11px] bg-bg-surface/90 text-text-secondary px-3 py-1 rounded-full border border-border/60 text-center shadow-sm">
+                        {n.text}
+                      </span>
+                    </div>
+                  ))}
+
                   {messages.map((m) => {
                     const isMine = m.isMine;
                     const isHeld = m.status === "HELD";
