@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   ExternalLink,
   ChevronRight,
+  ArrowLeft,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -326,7 +327,11 @@ export default function AdminPage() {
         {activeTab === "projects" && (
           <>
             {/* Zone 2: Projects List */}
-            <div className="w-80 md:w-96 bg-bg-panel border-r border-border flex flex-col shrink-0">
+            <div
+              className={`w-full sm:w-80 md:w-96 bg-bg-panel border-r border-border flex flex-col shrink-0 ${
+                selectedProjectId ? "hidden sm:flex" : "flex"
+              }`}
+            >
               <div className="p-4 border-b border-border flex items-center justify-between">
                 <div>
                   <h1 className="text-sm font-semibold text-text-primary">Projects</h1>
@@ -406,9 +411,23 @@ export default function AdminPage() {
             </div>
 
             {/* Zone 3: Project Detail & Member Management */}
-            <div className="flex-1 bg-bg-app flex flex-col overflow-y-auto">
+            <div
+              className={`flex-1 bg-bg-app flex flex-col overflow-y-auto ${
+                !selectedProjectId ? "hidden sm:flex" : "flex"
+              }`}
+            >
               {selectedProject ? (
                 <div className="p-6 max-w-5xl w-full mx-auto space-y-6">
+                  {/* Mobile Back Button */}
+                  <button
+                    onClick={() => setSelectedProjectId(null)}
+                    className="sm:hidden text-text-secondary hover:text-text-primary p-1 -ml-1 rounded mb-2 flex items-center gap-1.5 text-xs font-medium"
+                    aria-label="Back to projects"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back to projects</span>
+                  </button>
+
                   {/* Project Overview Card */}
                   <Card className="bg-bg-surface border-border p-5">
                     <div className="flex items-start justify-between">

@@ -515,6 +515,9 @@ export default function ProjectsPage() {
             <div
               ref={chatScrollContainerRef}
               onScroll={handleScroll}
+              role="log"
+              aria-live="polite"
+              aria-label="Chat messages"
               className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5"
             >
               {loadingMessages ? (
@@ -641,6 +644,7 @@ export default function ProjectsPage() {
                     onChange={(e) => setInputText(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Type a confidential message..."
+                    aria-label="Type a confidential message"
                     className="w-full h-10 px-4 bg-bg-field rounded-full text-xs text-text-primary placeholder:text-text-secondary border-none focus:ring-1 focus:ring-text-secondary/50"
                   />
                 </div>
