@@ -1,4 +1,5 @@
 import { User, UserRole, Membership, MembershipStatus } from "@prisma/client";
+import { type NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth/session";
 
@@ -15,8 +16,8 @@ export class AuthError extends Error {
  * Requires an authenticated user session.
  * Throws 401 AuthError if unauthenticated or deactivated.
  */
-export async function requireUser(): Promise<User> {
-  const user = await getCurrentUser();
+export async function requireUser(request?: NextRequest): Promise<User> {
+  const user = await getCurrentUser(request);
   if (!user || !user.isActive) {
     throw new AuthError("Authentication required", 401);
   }
@@ -27,8 +28,11 @@ export async function requireUser(): Promise<User> {
  * Requires the authenticated user to possess one of the required roles.
  * Throws 403 AuthError if user lacks permission.
  */
-export async function requireRole(allowedRoles: UserRole | UserRole[]): Promise<User> {
-  const user = await requireUser();
+export async function requireRole(
+  allowedRoles: UserRole | UserRole[],
+  request?: NextRequest
+): Promise<User> {
+  const user = await requireUser(request);
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
 
   if (!roles.includes(user.role)) {
