@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { requireUser, assertProjectAccess } from "@/lib/authz";
 import { serializeParticipantMessage } from "@/lib/serializers";
 import { validateOrigin } from "@/lib/auth/csrf";
+import { evaluateMessage } from "@/lib/rules";
 import { MessageStatus } from "@prisma/client";
 
 const SendMessageSchema = z.object({
@@ -126,19 +127,71 @@ export async function POST(
       );
     }
 
-    // 3. Create message (delivering by default in Feature 7 core; rule engine integration in Feature 9)
-    const newMessage = await db.message.create({
-      data: {
-        conversationId: project.conversation.id,
-        senderMembershipId: membership.id,
-        clientMessageId,
-        body,
-        status: MessageStatus.DELIVERED,
-        deliveredAt: new Date(),
-      },
-      include: {
-        senderMembership: { select: { alias: true } },
-      },
+    // 3. Evaluate moderation rules before delivery
+    const activeRules = await db.rule.findMany({ where: { isActive: true } });
+    const evalResult = evaluateMessage(body, activeRules);
+
+    const isHeld = evalResult.finalAction === "HOLD";
+    const status = isHeld ? MessageStatus.HELD : MessageStatus.DELIVERED;
+    const deliveredAt = isHeld ? null : new Date();
+
+    const conversationId = project.conversation.id;
+
+    // 4. Create Message, Flags, and Admin Alerts in ONE atomic transaction
+    const newMessage = await db.$transaction(async (tx) => {
+      const msg = await tx.message.create({
+        data: {
+          conversationId,
+          senderMembershipId: membership.id,
+          clientMessageId,
+          body,
+          status,
+          deliveredAt,
+        },
+        include: {
+          senderMembership: { select: { alias: true } },
+        },
+      });
+
+      // If any rules matched, create Flag records and alert Admins
+      if (evalResult.matches.length > 0) {
+        for (const match of evalResult.matches) {
+          await tx.flag.create({
+            data: {
+              messageId: msg.id,
+              ruleId: match.ruleId || null,
+              category: match.category,
+              severity: match.severity,
+              reason: match.reason,
+              matchedText: match.matchedText,
+              status: "OPEN",
+            },
+          });
+        }
+
+        // Create alert notification for administrators
+        const adminUsers = await tx.user.findMany({
+          where: { role: "ADMIN", isActive: true },
+          select: { id: true },
+        });
+
+        const notificationType = isHeld ? "FLAG_HELD" : "FLAG_ALERT";
+        const notificationText = isHeld
+          ? `Message held for policy review in ${project.title} (${membership.alias})`
+          : `Policy flag triggered in ${project.title} (${membership.alias})`;
+
+        for (const admin of adminUsers) {
+          await tx.notification.create({
+            data: {
+              recipientUserId: admin.id,
+              type: notificationType,
+              text: notificationText,
+            },
+          });
+        }
+      }
+
+      return msg;
     });
 
     return NextResponse.json(
