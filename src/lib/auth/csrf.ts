@@ -10,11 +10,6 @@ export function validateOrigin(request: NextRequest): boolean {
     return true;
   }
 
-  // During automated tests (Vitest), allow local requests
-  if (process.env.NODE_ENV === "test") {
-    return true;
-  }
-
   const origin = request.headers.get("origin");
   const host = request.headers.get("host") || request.nextUrl.host;
 

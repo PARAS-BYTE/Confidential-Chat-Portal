@@ -77,4 +77,31 @@ export function clearRateLimit(ip: string, email: string): void {
 // For unit testing
 export function _resetRateLimits(): void {
   rateLimitMap.clear();
+  messageRateMap.clear();
 }
+
+/**
+ * Message send rate limiter: Max 30 messages per minute per user.
+ */
+const messageRateMap = new Map<string, { count: number; windowStart: number }>();
+const MESSAGE_MAX = 30;
+const MESSAGE_WINDOW_MS = 60 * 1000;
+
+export function checkMessageRateLimit(userId: string): { isLimited: boolean; retryAfterSeconds: number } {
+  const now = Date.now();
+  const record = messageRateMap.get(userId);
+
+  if (!record || now - record.windowStart > MESSAGE_WINDOW_MS) {
+    messageRateMap.set(userId, { count: 1, windowStart: now });
+    return { isLimited: false, retryAfterSeconds: 0 };
+  }
+
+  if (record.count >= MESSAGE_MAX) {
+    const retryAfterSeconds = Math.ceil((MESSAGE_WINDOW_MS - (now - record.windowStart)) / 1000);
+    return { isLimited: true, retryAfterSeconds };
+  }
+
+  record.count += 1;
+  return { isLimited: false, retryAfterSeconds: 0 };
+}
+

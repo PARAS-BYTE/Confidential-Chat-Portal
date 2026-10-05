@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { requireUser, assertProjectAccess } from "@/lib/authz";
 import { serializeParticipantMessage } from "@/lib/serializers";
 import { validateOrigin } from "@/lib/auth/csrf";
+import { checkMessageRateLimit } from "@/lib/auth/rate-limit";
 import { evaluateMessage } from "@/lib/rules";
 import { MessageStatus } from "@prisma/client";
 
@@ -81,6 +82,14 @@ export async function POST(
 
     if (!validateOrigin(request)) {
       return NextResponse.json({ error: "Invalid request origin" }, { status: 403 });
+    }
+
+    const rateLimit = checkMessageRateLimit(user.id);
+    if (rateLimit.isLimited) {
+      return NextResponse.json(
+        { error: "Too many messages sent. Please slow down." },
+        { status: 429, headers: { "Retry-After": String(rateLimit.retryAfterSeconds) } }
+      );
     }
 
     // 1. Enforce active membership
