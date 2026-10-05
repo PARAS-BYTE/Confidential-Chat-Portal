@@ -13,6 +13,16 @@ export function validateOrigin(request: NextRequest): boolean {
   const origin = request.headers.get("origin");
   const host = request.headers.get("host") || request.nextUrl.host;
 
+  const allowedHosts = new Set<string>();
+  if (host) allowedHosts.add(host);
+  if (process.env.APP_URL) {
+    try {
+      allowedHosts.add(new URL(process.env.APP_URL).host);
+    } catch {
+      // ignore parse error
+    }
+  }
+
   if (!origin) {
     const referer = request.headers.get("referer");
     if (!referer) {
@@ -20,7 +30,7 @@ export function validateOrigin(request: NextRequest): boolean {
     }
     try {
       const refererUrl = new URL(referer);
-      return refererUrl.host === host;
+      return allowedHosts.has(refererUrl.host);
     } catch {
       return false;
     }
@@ -28,7 +38,7 @@ export function validateOrigin(request: NextRequest): boolean {
 
   try {
     const originUrl = new URL(origin);
-    return originUrl.host === host;
+    return allowedHosts.has(originUrl.host);
   } catch {
     return false;
   }
