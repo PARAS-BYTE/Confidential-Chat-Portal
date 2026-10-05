@@ -186,8 +186,86 @@ export default function LoginPage() {
           </div>
         </form>
 
+        {/* Demo Accounts Quick-Fill Section */}
+        <div className="mt-6 pt-5 border-t border-border">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-medium text-text-secondary uppercase tracking-wider">
+              Quick Demo Accounts
+            </span>
+            <span className="text-[11px] text-text-secondary/70">
+              Pass: <code className="text-accent bg-bg-app px-1 py-0.5 rounded font-mono">DemoPassword123!</code>
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-1.5 mb-2">
+            <button
+              type="button"
+              onClick={() => {
+                setEmail("admin@demo.ccp.test");
+                setPassword("DemoPassword123!");
+                setFieldErrors({});
+                setError(null);
+              }}
+              className="px-2 py-1.5 text-xs text-center rounded bg-bg-field hover:bg-bg-hover text-text-primary border border-border/60 transition-colors"
+            >
+              🛡️ Admin
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail("client1@demo.ccp.test");
+                setPassword("DemoPassword123!");
+                setFieldErrors({});
+                setError(null);
+              }}
+              className="px-2 py-1.5 text-xs text-center rounded bg-bg-field hover:bg-bg-hover text-text-primary border border-border/60 transition-colors"
+            >
+              👤 Client 1
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail("employee1@demo.ccp.test");
+                setPassword("DemoPassword123!");
+                setFieldErrors({});
+                setError(null);
+              }}
+              className="px-2 py-1.5 text-xs text-center rounded bg-bg-field hover:bg-bg-hover text-text-primary border border-border/60 transition-colors"
+            >
+              💼 Emp 1
+            </button>
+          </div>
+
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setEmail("client2@demo.ccp.test");
+                setPassword("DemoPassword123!");
+                setFieldErrors({});
+                setError(null);
+              }}
+              className="px-2 py-1.5 text-xs text-center rounded bg-bg-field hover:bg-bg-hover text-text-secondary hover:text-text-primary border border-border/40 transition-colors"
+            >
+              👤 Client 2
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail("employee2@demo.ccp.test");
+                setPassword("DemoPassword123!");
+                setFieldErrors({});
+                setError(null);
+              }}
+              className="px-2 py-1.5 text-xs text-center rounded bg-bg-field hover:bg-bg-hover text-text-secondary hover:text-text-primary border border-border/40 transition-colors"
+            >
+              💼 Emp 2
+            </button>
+          </div>
+        </div>
+
         {/* Required Compliance Notice */}
-        <div className="mt-6 pt-5 border-t border-border flex items-start gap-2.5 text-text-secondary/70">
+        <div className="mt-5 pt-4 border-t border-border flex items-start gap-2.5 text-text-secondary/70">
           <Lock className="w-4 h-4 shrink-0 mt-0.5 text-text-secondary/50" />
           <p className="text-[11px] leading-relaxed">
             Your identity is hidden from other participants. CCP Studio administrators
